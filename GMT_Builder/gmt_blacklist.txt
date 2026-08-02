@@ -1,0 +1,268 @@
+# gmt_blacklist.txt
+#
+# One pattern per line, same matching rule as gmt_whitelist.txt (case-insensitive
+# substring/regex against gs_name). Anything matching a line here is dropped from
+# the GMT even if it also matched the whitelist - the blacklist always wins.
+#
+# Lines starting with # and blank lines are ignored. Empty file = no exclusions.
+#
+# Below: adapted from the "biological blacklist" in
+# Codebase/Positron/RNA-SEQ-RIG _Rebuilt/05_GMT_Generation/white-black-list.rmd
+# (the non-immune candidate manifest builder) - keeps DNA-repair/cell-cycle/
+# signaling/tumor-suppressor pathways out of the noise, strips immune,
+# infection, tissue-specific, and disease/experimental-signature sets.
+#
+# NOTE: that source file's *collection*-level blacklist (GO:CC/MIR/TFT) is NOT
+# here - it's collection_blacklist_patterns in Build_GMT.rmd's CONFIG block,
+# since it's checked against gs_cat/gs_subcat, not gs_name, before this file
+# even runs. This file is the biological (gs_name keyword) blacklist only.
+
+# --- Immune ---
+IMMUNE
+INTERFERON
+CYTOKINE
+CHEMOKINE
+ANTIGEN
+MHC
+LEUKOCYTE
+LYMPHOCYTE
+MACROPHAGE
+MICROGLIA
+MONOCYTE
+MYELOID
+DENDRITIC
+T_CELL
+B_CELL
+NK
+COMPLEMENT
+
+# --- Infection ---
+COVID
+SARS
+CORONAVIRUS
+VIRUS
+VIRAL
+HIV
+PATHOGEN
+PARASITE
+SEPSIS
+MYCOBACTER
+YERSINIA
+
+# --- Experimental signatures ---
+_UP
+_DOWN
+_DN
+_POS
+_NEG
+TARGETS
+SIGNATURE
+TREATED
+UNTREATED
+KNOCKDOWN
+KNOCKOUT
+OVEREXPRESSION
+SENSITIVE
+RESISTANCE
+DEPENDENCY
+24HR
+48HR
+72HR
+UV
+RADIATION
+
+# --- Drug / treatment ---
+DRUG
+CHEMICAL
+COMPOUND
+INHIBITOR
+CHEMOTHERAPY
+QUERCETIN
+SILDENAFIL
+ETHANOL
+NANOPARTICLE
+NANOMATERIAL
+PHOTODYNAMIC
+MANUMYCIN
+
+# --- Diseases / tumor types (too specific for a general oncology panel) ---
+BREAST
+PROSTATE
+COLON
+COLORECTAL
+PANCREATIC
+OVARIAN
+ENDOMETRIAL
+LIVER
+HEPAT
+RENAL
+KIDNEY
+THYROID
+LUNG
+HUNTINGTON
+ALZHEIMER
+LEUKEMIA
+LYMPHOMA
+MYELOMA
+MELANOMA
+SARCOMA
+RETINOBLASTOMA
+MEDULLOBLASTOMA
+NEUROBLASTOMA
+_CANCER
+CANCER_
+_DISEASE
+IN_DISEASE
+DISEASES_OF
+DISORDER
+SYNDROME
+MUTATED_
+MUTANT_
+
+# --- Mitochondrial housekeeping (too granular) ---
+MITOCHONDRIAL_TRNA
+MITOCHONDRIAL_RNA
+MITOCHONDRIAL_PROTEIN_IMPORT
+MITOCHONDRIAL_RIBOSOME
+MITOCHONDRIAL_TRANSLATION
+MITOCHONDRIAL_TRANSPORT
+MITOCHONDRIAL_COMPLEX
+MITOCHONDRIAL_BIOGENESIS
+MITOCHONDRIAL_PROTEIN
+MITOCHONDRIAL_RRNA
+
+# --- Cellular stress / lipid (broad, low signal for this panel) ---
+STRESS
+HYPOXIA
+OXIDATIVE
+ER_STRESS
+ENDOPLASMIC_RETICULUM
+LYSOSOME
+LIPID
+
+# --- Tissue-specific ---
+CARDIAC
+HEART
+MUSCLE
+DIGESTIVE
+INTESTINAL
+HEPATOCYTE
+ADIPOCYTE
+OVARY
+TESTIS
+BONE
+ALLOGRAFT
+
+# --- Development ---
+EMBRYONIC
+PLURIPOTENT
+GERMLINE
+MESENCHYMAL
+HEMATOPOIETIC
+ZYGOTIC
+
+# --- Phenotype / clinical ---
+METASTASIS
+SUBTYPE
+SUBCLASS
+SURVIVAL
+PROGNOSIS
+
+# --- Very specific receptor/ligand physiology ---
+ENDOCYTOSIS
+RECYCLING
+TRAFFICKING
+EXTRACELLULAR
+MATRIX
+ADHESION
+FGFR1
+FGFR2
+FGFR3
+FGFR4
+ERBB4
+NOTCH3
+NOTCH4
+
+# NOTE: this line matches the original literally, but it also blocks every set
+# the whitelist's "NOTCH" keyword (developmental signaling) would otherwise
+# include - blacklist always wins over whitelist here, so no Notch pathway of
+# any kind survives while this line is active. Confirmed intentional 2026-08-02.
+Notch
+
+# --- Housekeeping metabolism / transport ---
+CARBOHYDRATE
+GLUTATHIONE
+BILE
+ASCORBATE
+CHANNEL
+CALCIUM
+BICARBONATE
+IRON_SULFUR
+CARBON_DIOXIDE
+CARBONATE
+FOLATE
+VITAMIN_D3
+
+# --- Generic GPCR signaling ---
+GPCR
+G_PROTEIN
+
+# --- Protein processing ---
+UBIQUITIN
+SUMO
+GLYCOSYL
+LIPIDATION
+HYPUSIN
+ARYLSULFATASE
+ORNITHINE
+ODC
+
+# --- Housekeeping transcription ---
+RNA_POLYMERASE
+RRNA
+SNRNA
+
+# --- Golgi / trafficking ---
+GOLGI
+COPI
+RETROGRADE
+
+# --- Hormonal physiology ---
+ERYTHROPOIETIN
+GASTRIN
+INSULIN
+NICOTINIC
+PROSTACYCLIN
+TRABECULAR
+
+# --- WikiPathways duplicates (original author's judgment: redundant with the
+# Hallmark/Reactome equivalent already covered elsewhere) - only relevant now
+# that ^C2:CP:WIKIPATHWAYS is in the collection whitelist ---
+WP_INTERACTOME_OF_POLYCOMB_REPRESSIVE_COMPLEX_2_PRC2
+WP_ATM_SIGNALING
+WP_ATR_SIGNALING
+WP_PDGFRBETA_PATHWAY
+WP_TP53_NETWORK
+WP_ONECARBON_METABOLISM
+WP_TARGET_OF_RAPAMYCIN_SIGNALING
+WP_PHOSPHOINOSITIDE_3KINASE_PI3K_FAMILY
+WP_EGFEGFR_SIGNALING
+WP_MAPK_SIGNALING
+WP_MAPK_CASCADE
+WP_RAS_SIGNALING
+WP_ERBB_SIGNALING
+WP_WNT_SIGNALING
+WP_NOTCH_SIGNALING
+WP_HEDGEHOG_SIGNALING
+WP_AUTOPHAGY
+WP_CELL_CYCLE
+WP_APOPTOSIS
+WP_BASE_EXCISION_REPAIR
+WP_NUCLEOTIDE_EXCISION_REPAIR
+
+# --- Misc noise ---
+GRAPHENE
+NANO
+BINDING
+REVERSIBLE_HYDRATION
+MITOCHONDRIA

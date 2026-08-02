@@ -1,0 +1,314 @@
+
+```{r}
+################################################################################
+# Build_GMT.R - build a GMT for GSEA/ssGSEA in two sections, run separately:
+#
+#   SECTION 1 generates pathway_list.csv from gmt_whitelist.txt/gmt_blacklist.txt.
+#   -> Run this chunk, then open pathway_list.csv and edit it directly: flip
+#      `include` to FALSE, delete rows, or add a row for any exact MSigDB
+#      gs_name you know isn't caught by any whitelist pattern.
+#
+#   SECTION 2 reads pathway_list.csv (not the whitelist/blacklist files) and
+#   builds the actual GMT from whatever rows have include=TRUE - both a single
+#   joint GMT and a folder of one-GMT-per-pathway (Out_dir/gmt/individual/).
+#   If you add a row by hand with just include + gs_name, Section 2 backfills
+#   gs_cat/gs_subcat/n_genes/gs_description for that row from msigdbr and
+#   writes it back into pathway_list.csv - only blank cells get filled in.
+#   -> Run this chunk after you're done editing the CSV.
+#
+# Re-running Section 1 does NOT overwrite an existing pathway_list.csv - it
+# writes pathway_list_draft.csv instead, so manual edits are never silently
+# clobbered by a re-generation. Diff the two and merge by hand if you want to
+# pull in whitelist/blacklist changes without losing manual edits.
+################################################################################
+
+library(msigdbr)
+library(dplyr)
+
+#-----------------------------#
+# CONFIG - shared by both sections
+#-----------------------------#
+
+species        <- "Homo sapiens"   # anything msigdbr supports, e.g. "Mus musculus"
+base_dir       <- "F:/Navin/Utilities/GMT_Builder"   # folder holding this script + the note files
+whitelist_file <- file.path(base_dir, "gmt_whitelist.txt")
+blacklist_file <- file.path(base_dir, "gmt_blacklist.txt")
+pathway_csv    <- file.path(base_dir, "pathway_list.csv")
+Out_dir        <- file.path(base_dir, "output")   # local by default - point this at a project's own output folder if needed
+out_name       <- "custom_geneset.gmt"
+
+min_set_size   <- 10    # drop gene sets smaller than this (after gene mapping) - Section 1 only
+max_set_size   <- 250   # drop gene sets larger than this (too broad to be useful) - Section 1 only
+
+# Collection-level allow/block, applied BEFORE the biological whitelist/blacklist
+# text files - matches white-black-list.rmd's allowed_patterns/blocked_patterns,
+# checked against gs_cat combined with gs_subcat (e.g. "C2:CP:REACTOME"). Kept
+# here as script config rather than a third note file since this changes rarely
+# (it's what collections exist at all, not which pathways within them matter).
+collection_whitelist_patterns <- c(
+  "^H$",
+  "^C2:CP:REACTOME",
+  "^C2:CP:KEGG",
+  "^C2:CP:WIKIPATHWAYS",
+  "MEDICUS"
+)
+collection_blacklist_patterns <- c(
+  "GO:CC",
+  "MIR",
+  "TFT"
+)
+
+# msigdbr renamed gs_cat/gs_subcat -> gs_collection/gs_subcollection in a recent
+# major version - this resolves whichever names the installed version actually
+# uses instead of hardcoding one, so the script works either way.
+resolve_col <- function(df, candidates) {
+  hit <- candidates[candidates %in% names(df)]
+  if (length(hit) == 0) {
+    stop(
+      "None of these columns found in msigdbr output: ", paste(candidates, collapse = ", "),
+      ". Installed msigdbr's columns are: ", paste(names(df), collapse = ", ")
+    )
+  }
+  hit[1]
+}
+
+fetch_msigdbr <- function(species, with_metadata = TRUE) {
+  raw <- msigdbr(species = species)
+  name_col <- resolve_col(raw, c("gs_name"))
+  gene_col <- resolve_col(raw, c("gene_symbol"))
+  if (!with_metadata) {
+    out <- raw[, c(name_col, gene_col)]
+    names(out) <- c("gs_name", "gene_symbol")
+    return(dplyr::distinct(out))
+  }
+  cat_col  <- resolve_col(raw, c("gs_cat", "gs_collection"))
+  subcat_col <- resolve_col(raw, c("gs_subcat", "gs_subcollection"))
+  desc_col <- resolve_col(raw, c("gs_description"))
+  out <- raw[, c(name_col, cat_col, subcat_col, desc_col, gene_col)]
+  names(out) <- c("gs_name", "gs_cat", "gs_subcat", "gs_description", "gene_symbol")
+  out <- dplyr::distinct(out)
+  # "collection" string like the original's master CSV, e.g. "H" or "C2:CP:REACTOME"
+  out$collection <- ifelse(nzchar(out$gs_subcat), paste(out$gs_cat, out$gs_subcat, sep = ":"), out$gs_cat)
+  out
+}
+```
+
+## Section 1 - build pathway_list.csv from the whitelist/blacklist
+
+```{r}
+read_patterns <- function(path) {
+  if (!file.exists(path)) stop("Pattern file not found: ", path)
+  lines <- readLines(path, warn = FALSE)
+  lines <- trimws(lines)
+  lines[nzchar(lines) & !startsWith(lines, "#")]
+}
+
+whitelist_patterns <- read_patterns(whitelist_file)
+blacklist_patterns <- read_patterns(blacklist_file)
+
+if (length(whitelist_patterns) == 0) {
+  stop("Whitelist is empty - nothing would be included. Add at least one pattern to ", whitelist_file)
+}
+
+whitelist_regex <- paste(whitelist_patterns, collapse = "|")
+blacklist_regex <- if (length(blacklist_patterns) > 0) paste(blacklist_patterns, collapse = "|") else NA
+
+# pull the full msigdbr table (all collections) for the species
+all_sets <- fetch_msigdbr(species, with_metadata = TRUE)
+
+# collection-level allow/block first (which collections exist at all)
+collection_whitelist_regex <- paste(collection_whitelist_patterns, collapse = "|")
+collection_blacklist_regex <- paste(collection_blacklist_patterns, collapse = "|")
+
+before_collection_names <- unique(all_sets$gs_name)
+
+kept <- all_sets %>%
+  dplyr::filter(grepl(collection_whitelist_regex, collection, ignore.case = TRUE)) %>%
+  dplyr::filter(!grepl(collection_blacklist_regex, collection, ignore.case = TRUE))
+
+dropped_by_collection <- length(before_collection_names) - length(unique(kept$gs_name))
+
+# then biological whitelist, then biological blacklist (blacklist always wins)
+kept <- kept %>%
+  dplyr::filter(grepl(whitelist_regex, gs_name, ignore.case = TRUE))
+
+matched_whitelist_names <- unique(kept$gs_name)
+
+if (!is.na(blacklist_regex)) {
+  before_names <- unique(kept$gs_name)
+  kept <- kept %>%
+    dplyr::filter(!grepl(blacklist_regex, gs_name, ignore.case = TRUE))
+  dropped_by_blacklist <- setdiff(before_names, unique(kept$gs_name))
+} else {
+  dropped_by_blacklist <- character(0)
+}
+
+# size filter
+before_size_names <- unique(kept$gs_name)
+
+kept <- kept %>%
+  dplyr::group_by(gs_name) %>%
+  dplyr::filter(dplyr::n() >= min_set_size, dplyr::n() <= max_set_size) %>%
+  dplyr::ungroup()
+
+dropped_by_size <- setdiff(before_size_names, unique(kept$gs_name))
+
+# build the pathway list
+matched_pattern_for <- function(name) {
+  hits <- whitelist_patterns[vapply(whitelist_patterns, function(p) grepl(p, name, ignore.case = TRUE), logical(1))]
+  paste(hits, collapse = "; ")
+}
+
+pathway_list <- kept %>%
+  dplyr::group_by(gs_name, gs_cat, gs_subcat, gs_description) %>%
+  dplyr::summarise(n_genes = dplyr::n_distinct(gene_symbol), .groups = "drop") %>%
+  dplyr::arrange(gs_cat, gs_subcat, gs_name) %>%
+  dplyr::mutate(
+    include = TRUE,
+    matched_whitelist_pattern = vapply(gs_name, matched_pattern_for, character(1)),
+    notes = ""   # free-text space for manual annotation, never touched by this script
+  ) %>%
+  dplyr::select(include, gs_name, gs_cat, gs_subcat, n_genes, matched_whitelist_pattern, gs_description, notes)
+
+# write - never clobber manual edits
+if (file.exists(pathway_csv)) {
+  out_csv <- file.path(base_dir, "pathway_list_draft.csv")
+  message("NOTE: ", pathway_csv, " already exists - not overwriting it (it may hold manual edits).")
+  message("Writing the fresh draft to ", out_csv, " instead - review/merge by hand if you want the changes.")
+} else {
+  out_csv <- pathway_csv
+}
+
+utils::write.csv(pathway_list, out_csv, row.names = FALSE)
+
+# summary
+unmatched_patterns <- whitelist_patterns[
+  !vapply(whitelist_patterns, function(p) any(grepl(p, matched_whitelist_names, ignore.case = TRUE)), logical(1))
+]
+
+message("Wrote: ", out_csv)
+message("Gene sets included: ", nrow(pathway_list))
+message("Gene sets dropped by collection allow/block list: ", dropped_by_collection)
+message("Gene sets dropped by blacklist: ", length(dropped_by_blacklist))
+if (length(dropped_by_blacklist) > 0) message("  - ", paste(dropped_by_blacklist, collapse = ", "))
+message("Gene sets dropped by size filter (<", min_set_size, " or >", max_set_size, " genes): ", length(dropped_by_size))
+if (length(dropped_by_size) > 0) message("  - ", paste(dropped_by_size, collapse = ", "))
+if (length(unmatched_patterns) > 0) {
+  message("Whitelist patterns that matched NOTHING (check for typos): ", paste(unmatched_patterns, collapse = ", "))
+}
+message("")
+message("Next: open ", out_csv, ", edit `include` / add / delete rows as needed (a new row only needs")
+message("include + gs_name filled in - Section 2 backfills the rest), then run Section 2 below.")
+```
+
+## Section 2 - build the GMT from pathway_list.csv
+
+```{r}
+if (!file.exists(pathway_csv)) {
+  stop("Pathway list not found: ", pathway_csv, " - run Section 1 first.")
+}
+
+pathway_list_final <- utils::read.csv(pathway_csv, stringsAsFactors = FALSE)
+
+if (!all(c("include", "gs_name") %in% names(pathway_list_final))) {
+  stop("pathway_list.csv must have at least an 'include' and a 'gs_name' column.")
+}
+
+included_names <- pathway_list_final$gs_name[as.logical(pathway_list_final$include)]
+included_names <- unique(trimws(included_names))
+included_names <- included_names[nzchar(included_names)]
+
+if (length(included_names) == 0) {
+  stop("No rows with include=TRUE in ", pathway_csv)
+}
+
+# re-fetch gene membership (+ metadata, for backfill below) for exactly the
+# included gene sets - the CSV only carries metadata, not the gene list, so
+# this reflects any manual add/delete
+all_sets_final <- fetch_msigdbr(species, with_metadata = TRUE)
+
+final_kept <- all_sets_final %>%
+  dplyr::filter(gs_name %in% included_names)
+
+found_names <- unique(final_kept$gs_name)
+not_found <- setdiff(included_names, found_names)
+
+#-----------------------------#
+# BACKFILL metadata for rows that only have include/gs_name filled in - e.g. a
+# pathway you added by hand and didn't look up gs_cat/n_genes/description for
+# yourself. Only touches blank/NA cells - anything already filled in (or a
+# manual `notes` entry) is left exactly as-is.
+#-----------------------------#
+
+for (col in c("gs_cat", "gs_subcat", "n_genes", "gs_description", "notes")) {
+  if (!col %in% names(pathway_list_final)) pathway_list_final[[col]] <- NA
+}
+
+meta_lookup  <- dplyr::distinct(final_kept, gs_name, gs_cat, gs_subcat, gs_description)
+gene_counts  <- final_kept %>%
+  dplyr::group_by(gs_name) %>%
+  dplyr::summarise(n_genes_actual = dplyr::n_distinct(gene_symbol), .groups = "drop")
+
+is_blank <- function(x) is.na(x) | !nzchar(trimws(as.character(x)))
+
+need_meta <- is_blank(pathway_list_final$gs_cat)
+need_n    <- is_blank(pathway_list_final$n_genes)
+
+if (any(need_meta) || any(need_n)) {
+  meta_idx <- match(pathway_list_final$gs_name, meta_lookup$gs_name)
+  n_idx    <- match(pathway_list_final$gs_name, gene_counts$gs_name)
+
+  pathway_list_final$gs_cat[need_meta]         <- meta_lookup$gs_cat[meta_idx[need_meta]]
+  pathway_list_final$gs_subcat[need_meta]      <- meta_lookup$gs_subcat[meta_idx[need_meta]]
+  pathway_list_final$gs_description[need_meta] <- meta_lookup$gs_description[meta_idx[need_meta]]
+  pathway_list_final$n_genes[need_n]           <- gene_counts$n_genes_actual[n_idx[need_n]]
+
+  backfilled <- unique(pathway_list_final$gs_name[need_meta | need_n])
+  utils::write.csv(pathway_list_final, pathway_csv, row.names = FALSE)
+  message("Backfilled metadata for manually-added row(s) and updated ", pathway_csv, ": ", paste(backfilled, collapse = ", "))
+}
+
+write_gmt <- function(df, file) {
+  gmt_list <- split(df$gene_symbol, df$gs_name)
+  con <- file(file, "w")
+  for (gs in names(gmt_list)) {
+    genes <- unique(gmt_list[[gs]])
+    line <- c(gs, "na", genes)
+    writeLines(paste(line, collapse = "\t"), con)
+  }
+  close(con)
+}
+
+dir.create(Out_dir, recursive = TRUE, showWarnings = FALSE)
+gmt_dir <- file.path(Out_dir, "gmt")
+dir.create(gmt_dir, showWarnings = FALSE)
+out_path <- file.path(gmt_dir, out_name)
+
+write_gmt(final_kept, out_path)
+
+# individual per-pathway GMTs, one file per included gene set - same content
+# as the joint file, just split out for tools that expect one pathway per file
+individual_dir <- file.path(gmt_dir, "individual")
+dir.create(individual_dir, showWarnings = FALSE)
+
+sanitize_filename <- function(x) gsub("[^A-Za-z0-9_.-]", "_", x)
+
+for (gs in found_names) {
+  write_gmt(
+    final_kept[final_kept$gs_name == gs, ],
+    file.path(individual_dir, paste0(sanitize_filename(gs), ".gmt"))
+  )
+}
+
+message("Wrote: ", out_path)
+message("Wrote ", length(found_names), " individual GMTs to: ", individual_dir)
+message("Gene sets included: ", length(found_names), " of ", length(included_names), " rows marked include=TRUE")
+if (length(not_found) > 0) {
+  message("NOT FOUND in msigdbr for species '", species, "' (typo, wrong species, or renamed set) - check these rows in ", pathway_csv, ":")
+  message("  - ", paste(not_found, collapse = ", "))
+}
+
+################################################################################
+# DONE
+################################################################################
+```

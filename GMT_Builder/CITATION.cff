@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this tool, please cite it as below."
+type: software
+title: "GMT Collection Builder"
+abstract: "A whitelist/blacklist-driven tool for building curated .gmt gene set files for GSEA/ssGSEA from MSigDB, using editable note files instead of hardcoded gene set lists."
+authors:
+  - given-names: "Navin Kumar"
+    family-names: "Balagopal"
+    alias: "navinvent"
+    orcid: "https://orcid.org/0000-0002-3012-2469"
+repository-code: "https://github.com/navinvent/GMT_Collection_Builder"
+url: "https://github.com/navinvent/GMT_Collection_Builder"
+license: "MIT"
+date-released: "2026-08-02"
+version: "1.0.0"
+keywords:
+  - GSEA
+  - ssGSEA
+  - MSigDB
+  - gene-set-enrichment
+  - bioinformatics
+  - gmt

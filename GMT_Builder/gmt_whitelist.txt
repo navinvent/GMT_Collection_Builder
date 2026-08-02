@@ -1,0 +1,93 @@
+# gmt_whitelist.txt
+#
+# One pattern per line. Any MSigDB gene set whose gs_name matches a line here
+# (case-insensitive substring/regex match) is a candidate for inclusion in the
+# next GMT build. A full exact name is just a pattern that happens to match
+# only itself, so exact names and loose patterns can be mixed freely.
+#
+# Lines starting with # and blank lines are ignored.
+# Edit this file directly to change what goes into the GMT - no need to touch
+# Build_GMT.rmd.
+#
+# NOTE: this only matches gs_name (which collection a set belongs to is
+# handled separately, before this file even runs, by collection_whitelist_
+# patterns/collection_blacklist_patterns in Build_GMT.rmd's CONFIG block -
+# currently H / Reactome / KEGG / WikiPathways / Medicus, excluding GO:CC,
+# MIR, and TFT). So keywords here don't need collection prefixes like
+# "HALLMARK_" or "REACTOME_" - the collection stage already restricts the
+# universe of gs_name values this file's patterns get applied to.
+#
+# Ported from Codebase/Positron/RNA-SEQ-RIG _Rebuilt/05_GMT_Generation/
+# white-black-list.rmd (whitelist_keywords) - the non-immune candidate
+# manifest's biological whitelist.
+
+# --- DNA damage / repair ---
+DNA
+REPAIR
+REPLICATION
+CHECKPOINT
+TELOMERE
+ATR
+ATM
+BRCA
+RAD51
+
+# --- Cell cycle ---
+CELL_CYCLE
+MITOT
+SPINDLE
+CYCLIN
+CDK
+
+# --- Cell fate ---
+APOPTOS
+AUTOPHAG
+SENESC
+
+# --- RTK signaling ---
+EGFR
+ERBB
+PDGF
+PDGFR
+FGFR
+
+# --- MAPK ---
+MAPK
+ERK
+RAS
+RAF
+
+# --- PI3K ---
+PI3K
+AKT
+MTOR
+PTEN
+
+# --- Developmental signaling ---
+# NOTCH removed - blacklist has a bare "Notch" entry that always overrides it,
+# so keeping it here was dead weight.
+WNT
+HEDGEHOG
+
+# --- Tumor suppressors ---
+TP53
+RB
+MYC
+
+# --- Epigenetics ---
+CHROMATIN
+EPIGEN
+HDAC
+EZH
+PRC
+METHYL
+ACETYL
+
+# --- Metabolism ---
+OXPHOS
+GLYCOLYSIS
+MITOCHON
+
+# --- Protein homeostasis ---
+UPR
+UNFOLDED
