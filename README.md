@@ -166,18 +166,18 @@ output/
 If you use gene sets produced by this tool in a publication, cite the underlying resources, not just this script:
 
 **GSEA (the method):**
-> Subramanian A, Tamayo P, Mootha VK, et al. Gene set enrichment analysis: a knowledge-based approach for interpreting genome-wide expression profiles. *PNAS*. 2005;102(43):15545-15550.
+> Subramanian A, Tamayo P, Mootha VK, et al. Gene set enrichment analysis: a knowledge-based approach for interpreting genome-wide expression profiles. *PNAS*. 2005;102(43):15545-15550. doi:[10.1073/pnas.0506580102](https://doi.org/10.1073/pnas.0506580102)
 
 **MSigDB (the database):**
-> Liberzon A, Birger C, Thorvaldsdóttir H, Ghandi M, Mesirov JP, Tamayo P. The Molecular Signatures Database (MSigDB) hallmark gene set collection. *Cell Systems*. 2015;1(6):417-425.
+> Liberzon A, Birger C, Thorvaldsdóttir H, Ghandi M, Mesirov JP, Tamayo P. The Molecular Signatures Database (MSigDB) hallmark gene set collection. *Cell Systems*. 2015;1(6):417-425. doi:[10.1016/j.cels.2015.12.004](https://doi.org/10.1016/j.cels.2015.12.004)
 
 **`msigdbr` (the R package this tool depends on):** run `citation("msigdbr")` in R for the current, correct citation - it changes between versions, so don't copy a citation from anywhere (including here) without checking that first.
 
 **Per-collection citations**, if you're citing a specific collection you pulled sets from (check what's actually in your final GMT via `pathway_list.csv`'s `gs_cat`/`gs_subcat` columns):
 
-- **Reactome**: Gillespie M, Jassal B, Stephan R, et al. The reactome pathway knowledgebase 2022. *Nucleic Acids Research*. 2022;50(D1):D687-D692.
-- **KEGG**: Kanehisa M, Goto S. KEGG: Kyoto Encyclopedia of Genes and Genomes. *Nucleic Acids Research*. 2000;28(1):27-30. **KEGG's license is not fully open** - free for academic/non-commercial use, but commercial use requires a license from Kanehisa Laboratories/Pathway Solutions. Check current terms at [kegg.jp](https://www.kegg.jp) before any commercial use of KEGG-derived gene sets.
-- **WikiPathways**: Agrawal A, et al. WikiPathways 2024: next generation pathway database. *Nucleic Acids Research*. 2024. Released under CC0 - no restrictions, attribution appreciated.
+- **Reactome**: Gillespie M, Jassal B, Stephan R, et al. The reactome pathway knowledgebase 2022. *Nucleic Acids Research*. 2022;50(D1):D687-D692. doi:[10.1093/nar/gkab1028](https://doi.org/10.1093/nar/gkab1028)
+- **KEGG**: Kanehisa M, Goto S. KEGG: Kyoto Encyclopedia of Genes and Genomes. *Nucleic Acids Research*. 2000;28(1):27-30. doi:[10.1093/nar/28.1.27](https://doi.org/10.1093/nar/28.1.27) **KEGG's license is not fully open** - free for academic/non-commercial use, but commercial use requires a license from Kanehisa Laboratories/Pathway Solutions. Check current terms at [kegg.jp](https://www.kegg.jp) before any commercial use of KEGG-derived gene sets.
+- **WikiPathways**: Agrawal A, et al. WikiPathways 2024: next generation pathway database. *Nucleic Acids Research*. 2024;52(D1):D679-D689. doi:[10.1093/nar/gkad960](https://doi.org/10.1093/nar/gkad960) Released under CC0 - no restrictions, attribution appreciated. (Note: CC0 is the *current* license; content published before the switch from CC-BY 3.0 may be cited either way, so check the [terms page](https://www.wikipathways.org/terms.html) if it matters to you.)
 
 ## Citing this repository
 
